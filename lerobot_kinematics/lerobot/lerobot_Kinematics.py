@@ -3,26 +3,9 @@
 import numpy as np
 import math
 from math import sqrt as sqrt
-from spatialmath import SE3, SO3
+from spatialmath import SE3
 from lerobot_kinematics.ET import ET
 from scipy.spatial.transform import Rotation as R
-
-# Retain 15 decimal places and round off after the 15th place
-def atan2(first, second):
-    return round(math.atan2(first, second), 3)
-
-def sin(radians_angle):
-    return round(math.sin(radians_angle), 3)
-
-def cos(radians_angle):
-    return round(math.cos(radians_angle), 3)
-
-def acos(value):
-    return round(math.acos(value), 3)
-
-def round_value(value):
-    return round(value, 3)
-
 def create_so100():
     # to joint 1
     # E1 = ET.tx(0.0612)
@@ -74,23 +57,54 @@ def lerobot_FK(qpos_data, robot):
     # Get the end effector's homogeneous transformation matrix (T is an SE3 object)
     T = robot.fkine(qpos_data)
     
-    # Extract position (X, Y, Z) — use SE3 object's attribute
-    X, Y, Z = T.t  # Directly use t attribute to get position (X, Y, Z)
+    r,p,y = T.rpy()
+    X, Y, Z = T.t  
+    return np.array([X, Y, Z, r, p, y])
     
-    # Extract rotation matrix (T.A) and calculate Euler angles (alpha, beta, gamma)
-    R = T.R  # Get the rotation part (3x3 matrix)
+def lerobot_FK_5DOF(qpos_data, robot):
+    if len(qpos_data) != 5:
+        raise Exception("The dimensions of qpose_data are not the same as the robot joint dimensions")
+    T = robot.fkine(qpos_data[1:5])
+    T= SE3.Tx(0.0612) * SE3.Tz(0.0598) * SE3.Rz(qpos_data[0]) * T
+    r,p,y = T.rpy()
+    X, Y, Z = T.t  
+    return np.array([X, Y, Z, r, p, y])
+"""
+Performs inverse kinematics for a 5DOF robot arm.
 
-    # Calculate Euler angles
-    beta = atan2(-R[2, 0], sqrt(R[0, 0]**2 + R[1, 0]**2))
-    
-    if cos(beta) != 0:  # Ensure no division by zero
-        alpha = atan2(R[1, 0] / cos(beta), R[0, 0] / cos(beta))
-        gamma = atan2(R[2, 1] / cos(beta), R[2, 2] / cos(beta))
-    else:  # When cos(beta) is zero, singularity occurs
-        alpha = 0
-        gamma = atan2(R[0, 1], R[1, 1])
-    
-    return np.array([X, Y, Z, gamma, beta, alpha])
+Parameters:
+- q_now: A list of the current joint angles of the robot arm.
+- target_pose: A list representing the target pose (x, y, z, roll, pitch, yaw) of the robot arm's end effector.
+- robot: robot object created by create_so100
+
+Returns:
+- qpose: The calculated joint angles to achieve the target pose.
+- success: A boolean indicating whether the inverse kinematics operation was successful.
+- actual_pose: The actual pose achieved by the calculated joint angles.
+"""
+def lerobot_IK_5DOF(q_now, target_pose, robot):
+    if len(q_now) != 5:
+        raise Exception("The dimensions of qpose_data are not 5")
+    x, y, z, roll, pitch, yaw = list(target_pose)
+    # 5DOF机械臂少一个自由度，这个自由度损失的结果是yaw和y绑定，yaw可以通过第0关节直接映射。
+    yaw=math.atan2(y,x-0.0612)  # yaw的解析解
+    T = SE3.Trans(x, y, z) * SE3.RPY(roll, pitch, yaw) 
+    T = SE3.Rz(-yaw)*SE3.Tz(-0.0598) * SE3.Tx(-0.0612) * T 
+    sol = robot.ikine_LM(
+            Tep=T, 
+            q0=q_now[1:5],
+            ilimit=10,  # 10 iterations
+            slimit=2,  # 1 is the limit
+            tol=1e-3)
+    if sol.success:
+        q = sol.q
+        qpose=np.insert(q,0,yaw,axis=0)
+        qpose = smooth_joint_motion(q_now, qpose, robot)
+        
+        return qpose,True,[x, y, z, roll, pitch,yaw ]
+    else:
+        print(f'IK fails')
+        return -1 * np.ones(len(q_now)), False,[x, y, z, roll, pitch,yaw ]
     
 def lerobot_IK(q_now, target_pose, robot):
     if len(q_now) != len(robot.qlim[0]):

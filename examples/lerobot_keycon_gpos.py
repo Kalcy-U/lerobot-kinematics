@@ -5,9 +5,10 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import time
-from lerobot_kinematics import lerobot_IK, lerobot_FK, get_robot
+from lerobot_kinematics import lerobot_IK, lerobot_FK, get_robot,lerobot_FK_5DOF,lerobot_IK_5DOF
 from pynput import keyboard
 import threading
+import math
 
 np.set_printoptions(linewidth=200)
 
@@ -34,8 +35,8 @@ robot = get_robot('so100')
 
 control_qlimit = [[-2.1, -3.1, -0.0, -1.375,  -1.57, -0.15], 
                   [ 2.1,  0.0,  3.1,  1.475,   3.1,  1.5]]
-control_glimit = [[0.125, -0.4,  0.046, -3.1, -0.75, -1.5], 
-                  [0.340,  0.4,  0.23, 2.0,  1.57,  1.5]]
+control_glimit = [[-0.225, -0.4,  0.046, -3.1, -0.75, -1.5], 
+                  [0.340,  0.4,  0.43, 2.0,  1.57,  1.5]]
 
 # Initialize target joint positions
 init_qpos = np.array([0.0, -3.14, 3.14, 0.0, -1.57, -0.157])
@@ -156,13 +157,16 @@ try:
                 with viewer.lock():
                     viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = int(mjdata.time % 2)
                 viewer.sync()
-                
+                # 正运动学计算真实gpos
+                true_pos=lerobot_FK_5DOF(target_qpos[0:5], robot) 
+                ayx = math.atan2(true_pos[1],max(true_pos[0]-0.0612,0))  # 验证yaw与xy的关系，yaw应等于atan2(y,x-base_offset)
+                print("  real_gpos:", [f"{x:.3f}" for x in true_pos]," ayx:",ayx,"joint0:",target_qpos[0])
+                _,_,_=lerobot_IK_5DOF(target_qpos[0:5],true_pos, robot) 
                 # backup
                 target_gpos_last = target_gpos.copy()  # Save backup of target_gpos
                 target_qpos_last = target_qpos.copy()  # Save backup of target_gpos
             else:
                 target_gpos = target_gpos_last.copy()  # Restore the last valid target_gpos
-
             # Time management to maintain simulation timestep
             time_until_next_step = mjmodel.opt.timestep - (time.time() - step_start)
             if time_until_next_step > 0:
