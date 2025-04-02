@@ -6,42 +6,64 @@ from math import sqrt as sqrt
 from spatialmath import SE3
 from lerobot_kinematics.ET import ET
 from scipy.spatial.transform import Rotation as R
-def create_so100():
-    # to joint 1
-    # E1 = ET.tx(0.0612)
-    # E2 = ET.tz(0.0598)
-    # E3 = ET.Rz()
-    
-    # to joint 2
-    E4 = ET.tx(0.02943)
-    E5 = ET.tz(0.05504)
-    E6 = ET.Ry()
-    
-    # to joint 3
-    E7 = ET.tx(0.1127)
-    E8 = ET.tz(-0.02798)
-    E9 = ET.Ry()
 
-    # to joint 4
-    E10 = ET.tx(0.13504)
-    E11 = ET.tz(0.00519)
-    E12 = ET.Ry()
+
+class SO100Singleton:
+    _instance = None
     
-    # to joint 5
-    E13 = ET.tx(0.0593)
-    E14 = ET.tz(0.00996)
-    E15 = ET.Rx()  
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
     
-    # E17 = ET.tx(0.09538)
-    # to gripper
+    def __init__(self):
+        if not self._initialized:
+            self._initialized = True
+            self._so100 = self._create_robot()
+            self.BASE_TX=0.0612
+            self.BASE_TZ=0.0598
     
-    so100 = E4 * E5 * E6 * E7 * E8 * E9 * E10 * E11 * E12 * E13 * E14 * E15 #* E17  # E1 * E2 * E3 * 
+    def _create_robot(self):
+        # to joint 1
+        # E1 = ET.tx(0.0612)
+        # E2 = ET.tz(0.0598)
+        # E3 = ET.Rz()
+        
+        # to joint 2
+        E4 = ET.tx(0.02943)
+        E5 = ET.tz(0.05504)
+        E6 = ET.Ry()
+        
+        # to joint 3
+        E7 = ET.tx(0.1127)
+        E8 = ET.tz(-0.02798)
+        E9 = ET.Ry()
+
+        # to joint 4
+        E10 = ET.tx(0.13504)
+        E11 = ET.tz(0.00519)
+        E12 = ET.Ry()
+        
+        # to joint 5
+        E13 = ET.tx(0.0593)
+        E14 = ET.tz(0.00996)
+        E15 = ET.Rx()  
+        
+        # E17 = ET.tx(0.09538)
+        # to gripper
+        
+        so100 = E4 * E5 * E6 * E7 * E8 * E9 * E10 * E11 * E12 * E13 * E14 * E15 #* E17  # E1 * E2 * E3 * 
+        
+        # Set joint limits
+        so100.qlim = [[-3.5, -0.2,     -1.9, -3.14158], 
+                    [ 0.2,      3.14158,  1.9,  3.14158]]
+        return so100
     
-    # Set joint limits
-    so100.qlim = [[-3.5, -0.2,     -1.9, -3.14158], 
-                  [ 0.2,      3.14158,  1.9,  3.14158]]
-    
-    return so100
+    def __getattr__(self, name):
+        return getattr(self._so100, name)
+def create_so100():
+    return SO100Singleton()
 
 def get_robot(robot="so100"):
     
@@ -65,7 +87,7 @@ def lerobot_FK_5DOF(qpos_data, robot):
     if len(qpos_data) != 5:
         raise Exception("The dimensions of qpose_data are not the same as the robot joint dimensions")
     T = robot.fkine(qpos_data[1:5])
-    T= SE3.Tx(0.0612) * SE3.Tz(0.0598) * SE3.Rz(qpos_data[0]) * T
+    T= SE3.Tx(robot.BASE_TZ) * SE3.Tz(0.0598) * SE3.Rz(qpos_data[0]) * T
     r,p,y = T.rpy()
     X, Y, Z = T.t  
     return np.array([X, Y, Z, r, p, y])
@@ -88,7 +110,7 @@ def lerobot_IK_5DOF(q_now, target_pose, robot):
     x, y, z, roll, pitch, yaw = list(target_pose)
     diff_tol=0.001
     # 5DOF机械臂少一个自由度，这个自由度损失的结果是yaw和y绑定，yaw可以通过第0关节直接映射。
-    if ((x-0.0612)**2+y**2)<0.0009: # 处于基座半斤3cm范围内，空间可能不连续
+    if ((x-robot.BASE_TZ)**2+y**2)<0.0009: # 处于基座半斤3cm范围内，空间可能不连续
         fk=lerobot_FK_5DOF(q_now, robot)
         diff = fk[0:5]-target_pose[0:5]
         if np.linalg.norm(diff)<diff_tol: 
@@ -97,19 +119,19 @@ def lerobot_IK_5DOF(q_now, target_pose, robot):
             yaw=0
             diff_tol=1
     else:
-        yaw=math.atan2(y,x-0.0612)  # yaw的解析解
+        yaw=math.atan2(y,x-robot.BASE_TZ)  # yaw的解析解
         if yaw>math.pi/2:
             yaw=yaw-math.pi
         elif yaw<-math.pi/2:
             yaw=yaw+math.pi
         
     T = SE3.Trans(x, y, z) * SE3.RPY(roll, pitch, yaw) 
-    T = SE3.Rz(-yaw)*SE3.Tz(-0.0598) * SE3.Tx(-0.0612) * T 
+    T = SE3.Rz(-yaw)*SE3.Tz(-robot.BASE_TZ) * SE3.Tx(-robot.BASE_TZ) * T 
     sol = robot.ikine_LM(
             Tep=T, 
             q0=q_now[1:5],
-            ilimit=10,  # 10 iterations
-            slimit=2,  # 1 is the limit
+            ilimit=10,  
+            slimit=2, 
             tol=diff_tol)
     if sol.success:
         q = sol.q
