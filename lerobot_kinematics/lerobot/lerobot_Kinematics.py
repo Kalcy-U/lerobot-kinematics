@@ -38,8 +38,8 @@ def create_so100():
     so100 = E4 * E5 * E6 * E7 * E8 * E9 * E10 * E11 * E12 * E13 * E14 * E15 #* E17  # E1 * E2 * E3 * 
     
     # Set joint limits
-    so100.qlim = [[-3.3, -0.2,     -1.8, -3.14158], 
-                  [ 0.2,      3.14158,  1.8,  3.14158]]
+    so100.qlim = [[-3.5, -0.2,     -1.9, -3.14158], 
+                  [ 0.2,      3.14158,  1.9,  3.14158]]
     
     return so100
 
@@ -86,8 +86,23 @@ def lerobot_IK_5DOF(q_now, target_pose, robot):
     if len(q_now) != 5:
         raise Exception("The dimensions of qpose_data are not 5")
     x, y, z, roll, pitch, yaw = list(target_pose)
+    diff_tol=0.001
     # 5DOF机械臂少一个自由度，这个自由度损失的结果是yaw和y绑定，yaw可以通过第0关节直接映射。
-    yaw=math.atan2(y,x-0.0612)  # yaw的解析解
+    if ((x-0.0612)**2+y**2)<0.0009: # 处于基座半斤3cm范围内，空间可能不连续
+        fk=lerobot_FK_5DOF(q_now, robot)
+        diff = fk[0:5]-target_pose[0:5]
+        if np.linalg.norm(diff)<diff_tol: 
+            return q_now,True,[x, y, z, roll, pitch, yaw]
+        else:
+            yaw=0
+            diff_tol=1
+    else:
+        yaw=math.atan2(y,x-0.0612)  # yaw的解析解
+        if yaw>math.pi/2:
+            yaw=yaw-math.pi
+        elif yaw<-math.pi/2:
+            yaw=yaw+math.pi
+        
     T = SE3.Trans(x, y, z) * SE3.RPY(roll, pitch, yaw) 
     T = SE3.Rz(-yaw)*SE3.Tz(-0.0598) * SE3.Tx(-0.0612) * T 
     sol = robot.ikine_LM(
@@ -95,7 +110,7 @@ def lerobot_IK_5DOF(q_now, target_pose, robot):
             q0=q_now[1:5],
             ilimit=10,  # 10 iterations
             slimit=2,  # 1 is the limit
-            tol=1e-3)
+            tol=diff_tol)
     if sol.success:
         q = sol.q
         qpose=np.insert(q,0,yaw,axis=0)
