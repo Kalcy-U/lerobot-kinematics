@@ -198,6 +198,12 @@ def _model_to_lerobot(q):
     c_qpos[0:2]=-c_qpos[0:2]
     c_qpos=c_qpos*180/np.pi
     return c_qpos
+'''
+q_now(lerobot dataset format)
+target_pos(6dof gpos in meters+gripper in deg)
+return qpos(in deg),ik_success(bool)
+'''
+
 def so100_IK(q_now, target_pos):
     
     robot = create_so100()
@@ -205,10 +211,15 @@ def so100_IK(q_now, target_pos):
     q5,succ,target_g=lerobot_IK_5DOF(c_qpos[0:5], target_pos[0:6], robot)
     if succ:
         q5=_model_to_lerobot(q5)
-        q_new = np.concatenate((q5,q_now[5:]))
+        q_new = np.concatenate((q5,target_pos[6:])) # target_pos[6] is gripper in degree
         return q_new, True
     else:
         return -1 * np.ones(len(c_qpos)), False
+
+'''
+get qpos in lerobot format(in deg)
+return gpos and gripper(in deg)
+'''
 def so100_FK(q_now):
     robot = create_so100()
     c_qpos=_lerobot_to_model(q_now)

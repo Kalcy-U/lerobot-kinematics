@@ -12,4 +12,4 @@ MUJOCO_LOG.TXT
 **.so
 MUJOCO_LOG.TXT
 .output
-.parquet
+**.parquet
