@@ -5,7 +5,7 @@
 examples/main_follower.json
 .vscode/settings.json
 lerobot_kinematics/lerobot/__pycache__/**
-lerobot_kinematics.egg-info/**
+lerobot_kinematics.egg-info/
 MUJOCO_LOG.TXT
 
 **.pyc

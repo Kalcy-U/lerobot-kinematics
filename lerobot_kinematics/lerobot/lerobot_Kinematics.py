@@ -4,7 +4,7 @@ import numpy as np
 import math
 from math import sqrt as sqrt
 from spatialmath import SE3
-from lerobot_kinematics.ET import ET
+from roboticstoolbox.robot.ET import ET
 from scipy.spatial.transform import Rotation as R
 
 
