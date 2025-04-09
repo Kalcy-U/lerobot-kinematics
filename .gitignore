@@ -11,3 +11,5 @@ MUJOCO_LOG.TXT
 **.pyc
 **.so
 MUJOCO_LOG.TXT
+.output
+.parquet

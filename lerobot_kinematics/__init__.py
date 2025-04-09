@@ -5,4 +5,6 @@ __all__ = [
     "lerobot_FK",
     "lerobot_IK_5DOF",
     "lerobot_FK_5DOF",
+    "so100_FK",
+    "so100_IK",
 ]

@@ -113,10 +113,10 @@ def lerobot_IK_5DOF(q_now, target_pose, robot):
     if ((x-robot.BASE_TZ)**2+y**2)<0.0009: # 处于基座半斤3cm范围内，空间可能不连续
         fk=lerobot_FK_5DOF(q_now, robot)
         diff = fk[0:5]-target_pose[0:5]
-        if np.linalg.norm(diff)<diff_tol: 
+        if np.linalg.norm(diff)<0.16: 
             return q_now,True,[x, y, z, roll, pitch, yaw]
         else:
-            yaw=0
+            
             diff_tol=1
     else:
         yaw=math.atan2(y,x-robot.BASE_TZ)  # yaw的解析解
@@ -186,3 +186,32 @@ def smooth_joint_motion(q_now, q_new, robot):
     
     robot.q = q_new
     return q_new
+
+def _lerobot_to_model(q):
+    # Convert from LEROBOT dataset to ET MODEL coordinates
+    c_qpos=q.copy()
+    c_qpos[0:2]=-c_qpos[0:2]
+    c_qpos=c_qpos*np.pi/180
+    return c_qpos
+def _model_to_lerobot(q):
+    c_qpos=q.copy()
+    c_qpos[0:2]=-c_qpos[0:2]
+    c_qpos=c_qpos*180/np.pi
+    return c_qpos
+def so100_IK(q_now, target_pos):
+    
+    robot = create_so100()
+    c_qpos=_lerobot_to_model(q_now)
+    q5,succ,target_g=lerobot_IK_5DOF(c_qpos[0:5], target_pos[0:6], robot)
+    if succ:
+        q5=_model_to_lerobot(q5)
+        q_new = np.concatenate((q5,q_now[5:]))
+        return q_new, True
+    else:
+        return -1 * np.ones(len(c_qpos)), False
+def so100_FK(q_now):
+    robot = create_so100()
+    c_qpos=_lerobot_to_model(q_now)
+    gpos=lerobot_FK_5DOF(c_qpos[0:5],robot)
+    gpos=np.append(gpos,q_now[5]) #end effector
+    return gpos # (xyzrpy,gripper)

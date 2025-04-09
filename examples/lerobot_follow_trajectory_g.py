@@ -20,8 +20,8 @@ class INPUTMODE(Enum):
     QPOS=0
     GPOS=1
     
-input_mode= INPUTMODE.QPOS
-def load_dataset_qpos(path='episode_000000.parquet'):
+input_mode= INPUTMODE.GPOS
+def load_dataset_qpos(path='episode_000000_g.parquet'):
     df = pd.read_parquet(path)
     return df['observation.state'].to_list()
 
@@ -39,24 +39,20 @@ mjdata = mujoco.MjData(mjmodel)
 robot = get_robot('so100')
 
 lock = threading.Lock()
-qpos_list= load_dataset_qpos()
+gdata= load_dataset_qpos()
 count_bias_a=0
 count_bias_b=0
+last_qpos= np.array([-0.0123, -3.2244, 1.7441, 1.7503, -0.0383, 0.11])
 try:
     with mujoco.viewer.launch_passive(mjmodel, mjdata) as viewer:
-        
-        for qpos in qpos_list:
-        
-            #lerobot space to model space
-            if input_mode==INPUTMODE.QPOS:
-                qpos = to_rad(qpos)
-                qpos[0:2]=-qpos[0:2] 
-                print("origin qpos:", [f"{x:.4f}" for x in qpos[0:5]])
-                position = lerobot_FK_5DOF(qpos[0:5], robot=robot)
-                print()
-            qpos_inv, ik_success, reg_pos = lerobot_IK_5DOF(qpos[0:5], position, robot=robot)
-            
-            
+        for data in gdata:
+            print("gpos",[f"{x:.4f}" for x in data])
+            qpos_inv, ik_success, reg_pos = lerobot_IK_5DOF(last_qpos[0:5], data[0:6], robot=robot)
+            if ik_success:
+                qpos= np.concatenate((qpos_inv, data[6:]*math.pi/180))
+                last_qpos=qpos
+            else:
+                qpos= last_qpos
             mjdata.qpos[0:6]=qpos
             mujoco.mj_step(mjmodel, mjdata)
             viewer.sync()
