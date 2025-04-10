@@ -16,11 +16,11 @@ xml_path = "./examples/scene.xml"
 mjmodel = mujoco.MjModel.from_xml_path(xml_path)
 mjdata = mujoco.MjData(mjmodel)
 qpos_indices = np.array([mjmodel.jnt_qposadr[mjmodel.joint(name).id] for name in ["Rotation", "Pitch", "Elbow", "Wrist_Pitch", "Wrist_Roll", "Jaw"]])
+        # Set joint limits
 
-# Constants
 JOINT_INCREMENT, POSITION_INCREMENT = 0.005, 0.0008
-control_qlimit = [[-2.1, -3.1, -0.0, -1.375, -1.57, -0.15], [2.1, 0.0, 3.1, 1.475, 3.1, 1.5]]
-control_glimit = [[0.125, -0.4, 0.046, -3.1, -0.75, -1.5], [0.340, 0.4, 0.23, 2.0, 1.57, 1.5]]
+control_qlimit = [[-2.8, -3.8, -0.4, -2, -3.14, -0.15], [2.8, 0.3, 3.4, 2, 3.14, 1.5]]
+control_glimit = [[0.025, -0.4, 0.046, -3.1, -0.75, -1.5], [0.340, 0.4, 0.23, 3.1, 1.57, 1.5]]
 
 # Robot Initialization
 robot = get_robot('so100')

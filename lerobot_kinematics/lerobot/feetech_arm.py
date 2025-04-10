@@ -14,12 +14,12 @@ class feetech_arm:
           
   def connect_arm(self):
     # Connect to the robotic arm motors
-    motors = {"shoulder_pan": (1, "sts3215"),
-              "shoulder_lift": (2, "sts3215"),
-              "elbow_flex": (3, "sts3215"),
-              "wrist_flex": (4, "sts3215"),
-              "wrist_roll": (5, "sts3215"),
-              "gripper": (6, "sts3215")}
+    motors = {"shoulder_pan": (6, "sts3215"),
+              "shoulder_lift": (5, "sts3215"),
+              "elbow_flex": (4, "sts3215"),
+              "wrist_flex": (3, "sts3215"),
+              "wrist_roll": (2, "sts3215"),
+              "gripper": (1, "sts3215")}
 
     follower_arm = FeetechMotorsBus(port=self.driver_port, motors=motors)
     follower_arm.connect()

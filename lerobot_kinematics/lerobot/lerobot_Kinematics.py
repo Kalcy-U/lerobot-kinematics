@@ -56,8 +56,8 @@ class SO100Singleton:
         so100 = E4 * E5 * E6 * E7 * E8 * E9 * E10 * E11 * E12 * E13 * E14 * E15 #* E17  # E1 * E2 * E3 * 
         
         # Set joint limits
-        so100.qlim = [[-3.5, -0.2,     -1.9, -3.14158], 
-                    [ 0.2,      3.14158,  1.9,  3.14158]]
+        so100.qlim = [[-3.8, -0.4,     -2, -3.14158], 
+                    [ 0.4,      3.14158,  2,  3.14158]]
         return so100
     
     def __getattr__(self, name):
@@ -117,13 +117,13 @@ def lerobot_IK_5DOF(q_now, target_pose, robot):
             return q_now,True,[x, y, z, roll, pitch, yaw]
         else:
             
-            diff_tol=1
-    else:
-        yaw=math.atan2(y,x-robot.BASE_TZ)  # yaw的解析解
-        if yaw>math.pi/2:
-            yaw=yaw-math.pi
-        elif yaw<-math.pi/2:
-            yaw=yaw+math.pi
+            diff_tol=10
+    
+    yaw=math.atan2(y,x-robot.BASE_TZ)  # yaw的解析解
+    if yaw>math.pi/2:
+        yaw=yaw-math.pi
+    elif yaw<-math.pi/2:
+        yaw=yaw+math.pi
         
     T = SE3.Trans(x, y, z) * SE3.RPY(roll, pitch, yaw) 
     T = SE3.Rz(-yaw)*SE3.Tz(-robot.BASE_TZ) * SE3.Tx(-robot.BASE_TZ) * T 
@@ -191,11 +191,13 @@ def _lerobot_to_model(q):
     # Convert from LEROBOT dataset to ET MODEL coordinates
     c_qpos=q.copy()
     c_qpos[0:2]=-c_qpos[0:2]
+    c_qpos[4]=-c_qpos[4]
     c_qpos=c_qpos*np.pi/180
     return c_qpos
 def _model_to_lerobot(q):
     c_qpos=q.copy()
     c_qpos[0:2]=-c_qpos[0:2]
+    c_qpos[4]=-c_qpos[4]
     c_qpos=c_qpos*180/np.pi
     return c_qpos
 '''

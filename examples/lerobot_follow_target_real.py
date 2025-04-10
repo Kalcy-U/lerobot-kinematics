@@ -19,15 +19,19 @@ qpos_indices = np.array([mjmodel.jnt_qposadr[mjmodel.joint(name).id] for name in
 
 # Constants
 JOINT_INCREMENT, POSITION_INCREMENT = 0.005, 0.0008
-control_qlimit = [[-2.1, -3.3, -0.0, -1.375, -1.57, -0.15], [2.1, 0.0, 3.1, 1.475, 3.1, 1.5]]
+control_qlimit = [[-2.1, -3.8, -0.0, -1.375, -1.57, -0.15], [2.1, 0.3, 3.1, 1.475, 3.1, 1.5]]
 control_glimit = [[0.125, -0.4, 0.046, -3.1, -0.75, -1.5], [0.340, 0.4, 0.23, 2.0, 1.57, 1.5]]
 
 # Robot Initialization
 robot = get_robot('so100')
-init_qpos = np.array([0.0, -3.14, 3.14, 0.0, -1.57, -0.157])
+# init_qpos = np.array([0.0, -3.14, 3.14, 0.0, -1.57, -0.157])
+
+follower_arm = feetech_arm(driver_port="COM3", calibration_file="main_follower.json" )
+init_qpos = follower_arm.feedback()
 init_gpos = lerobot_FK_5DOF(init_qpos[:5], robot=robot)
 target_qpos, target_gpos = init_qpos.copy(), init_gpos.copy()
-follower_arm = feetech_arm(driver_port="/dev/tty1", calibration_file="examples/main_follower.json" )
+print(f"init:{init_qpos}")
+mjdata.qpos[qpos_indices]=init_qpos
 
 lock = threading.Lock()
 
@@ -58,7 +62,7 @@ def on_release(key):
 listener = keyboard.Listener(on_press=on_press, on_release=on_release)
 listener.start()
 
-
+time.sleep(1)
 try:
     with mujoco.viewer.launch_passive(mjmodel, mjdata) as viewer:
         start = time.time()
@@ -83,7 +87,7 @@ try:
                 mjdata.qpos[qpos_indices] = target_qpos
                 mujoco.mj_step(mjmodel, mjdata)
                 viewer.sync()
-                print("target_gpos:", [f"{x:.3f}" for x in reg_gpos])
+                print("target_gpos:", [f"{x:.3f}" for x in target_gpos])
                 follower_arm.action(target_qpos)
             time.sleep(max(0, mjmodel.opt.timestep - (time.time() - step_start)))
 except KeyboardInterrupt:
