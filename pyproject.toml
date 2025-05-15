@@ -14,13 +14,13 @@ dependencies = [
     "pynput==1.7.7",
     "numpy==1.24.4",
     "spatialmath-python>=1.1.5",
-    "spatialgeometry>=1.0.0",
     "scipy",
     "ansitable",
     "progress",
     "typing_extensions",
     "tqdm",
-    "feetech-servo-sdk"
+    "feetech-servo-sdk",
+    "roboticstoolbox-python==1.1.1"
 ]
 
 license = { file = "LICENSE" }
